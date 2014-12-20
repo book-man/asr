@@ -1,0 +1,5 @@
+function mfc = mfcc(time_waveform)
+
+    
+
+end
