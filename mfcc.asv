@@ -43,7 +43,7 @@ switch fs
         error('fs must be 8, 11, or 16 kHz');
 end
 
-% some calculations from input parameters
+% make the filterbank
 filterbank_mels = linspace(freq2mel(params.min_filterbank_freq), ...
     freq2mel(params.max_filterbank_freq), params.n_filterbank_freqs); % Hz
 filterbank_freqs = mel2freq(filterbank_mels);
@@ -52,11 +52,14 @@ filterbank = cell(params.n_filterbank_freqs, 1);
 filterbank_freqs = [0 filterbank_freqs];
 for i = 2:params.n_filterbank_freqs-1
     % get bounds for this triangular filter in Hz
-    filterbank_{i-1} = [filterbank_freqs(i-1) filterbank_freqs(i) filterbank_freqs(i+1)];
+    filterbank_bounds{i-1} = [filterbank_freqs(i-1) filterbank_freqs(i) filterbank_freqs(i+1)];
+    filterbank{i-1} = [
     % convert bounds to FFT bounds
-    filterbank{i-1} = round(filterbank{i-1} ./ (fs/2) .* (N_fft/2));
+    filterbank_bounds{i-1} = round(filterbank_bounds{i-1} ./ (fs/2) .* (N_fft/2));
     % make triangular filter out of bounds
-    filterbank{i-1} = 
+    filterbank{i-1} = zeros(N_fft/2, 1);
+    b = filterbank_bounds{i-1};
+    
 end
 
 %% offset compensation (remove DC offset)
