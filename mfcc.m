@@ -1,10 +1,29 @@
-function mfcc_vec = mfcc(xx, fs)
+function mfcc_vec = mfcc(varargin)
 % MFCC calculate mel frequency cepstrum coefficients
-%  mfcc_vec = MFCC(time_waveform)
+%  mfcc_vec = MFCC(xx, fs)
+%  mfcc_vec = MFCC(xx, fs, params_struct)
 
-% 
-nsamples = length(xx);
-freq2mel = @(f) 2595*log10(1+f/700);
+% helper functions
+freq2mel = @(f) 1125.*log(1+f./700);
+mel2freq = @(m) 700.*(exp(m./1125)-1);
+
+% get inputs
+switch nargin
+    case 2
+        xx = varargin{1};
+        fs = varargin{2};
+        % default parameters
+        params.n_filterbank_freqs = 26;
+        params.min_filterbank_freq = 300; % Hz
+        params.max_filterbank_freq = min(8000, fs/2); % Hz
+    case 3
+        xx = varargin{1};
+        fs = varargin{2};
+        params = varargin{3};
+    otherwise
+        error('Invalid number arguments');
+end
+
 %% set parameters based on 
 % parameters from ETSI ES 201 108 v1.1.3
 switch fs
@@ -24,21 +43,37 @@ switch fs
         error('fs must be 8, 11, or 16 kHz');
 end
 
+% make the filterbank
+filterbank_mels = linspace(freq2mel(params.min_filterbank_freq), ...
+    freq2mel(params.max_filterbank_freq), params.n_filterbank_freqs); % Hz
+filterbank_freqs = mel2freq(filterbank_mels);
+filterbank_bounds = cell(params.n_filterbank_freqs, 1);
+filterbank = cell(params.n_filterbank_freqs, 1);
+filterbank_freqs = [0 filterbank_freqs];
+for i = 2:params.n_filterbank_freqs-1
+    % get bounds for this triangular filter in Hz
+    filterbank_bounds{i-1} = [filterbank_freqs(i-1) filterbank_freqs(i) filterbank_freqs(i+1)];
+    % convert bounds to FFT bounds
+    filterbank_bounds{i-1} = round(filterbank_bounds{i-1} ./ (fs/2) .* (N_fft/2));
+    % make triangular filter out of bounds
+    filterbank{i-1} = zeros(N_fft/2, 1);
+    b = filterbank_bounds{i-1};
+    
+end
+
 %% offset compensation (remove DC offset)
 xx_nooffset = xx - mean(xx);
 
 %% STFT
-% todo - zero pad input signal?
+% todo - zero pad input signal
 % iterate through each frame
 frame_ind = 1:frame_length;
 while frame_ind(end) <= length(xx)
+    % get current frame
     xx_frame = xx(frame_ind).*hamming(frame_length);
     XX_frame = fft(xx_frame, N_fft);
-    % mel transform
-    
+    psd_frame = 0.5*abs(XX_frame).^2; % power spectrum
     % extract coefficients
-    
-    % 
     
     % update frame indices for next iteration
     frame_ind = frame_ind + frame_shift;
